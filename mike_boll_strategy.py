@@ -23,7 +23,7 @@ from vnpy.trader.constant import Direction ,Interval
 class Mike_Boll_Strategy(CtaTemplate):
     """"""
 
-    author = "云崖"
+    author = "yunya"
 
     open_window = 5
     xminute_window = 15
