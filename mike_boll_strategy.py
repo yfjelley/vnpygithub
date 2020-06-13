@@ -63,6 +63,7 @@ class Mike_Boll_Strategy(CtaTemplate):
                     "xminute_window",
                     "mike_window",
                     "boll_length",
+                    "boll_dev",
                     "mike_length",
                     "sl_multiplier",
                     "sl_trade",
