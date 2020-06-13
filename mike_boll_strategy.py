@@ -58,7 +58,7 @@ class Mike_Boll_Strategy(CtaTemplate):
     boll_entry_crossover = 0
     boll_width = 0
 
-    param_xhoureters = [
+    parameters = [
                     "open_window",
                     "xminute_window",
                     "mike_window",
