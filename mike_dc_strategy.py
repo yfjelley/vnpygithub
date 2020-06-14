@@ -74,7 +74,7 @@ class Mike_Boll_Strategy(CtaTemplate):
 
 
     parameters = [
-                    "exchange"
+                    "exchange",
                     "open_window",
                     "xminute_window",
                     "mike_window",
