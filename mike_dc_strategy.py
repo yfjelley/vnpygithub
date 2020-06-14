@@ -67,8 +67,6 @@ class Mike_Dc_Strategy(CtaTemplate):
 
     parameters = [
                     "exchange",
-                    "open_window",
-                    "xminute_window",
                     "mike_window",
                     "mike_length",
                     "dc_length",
