@@ -234,7 +234,6 @@ class Mike_Boll_Strategy(CtaTemplate):
         """
         Callback of stop order update.
         """
-
         pass
 
     def exchange_load_bar(self,exchange:Exchange):
