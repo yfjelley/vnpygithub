@@ -19,24 +19,19 @@ from vnpy.app.cta_strategy import (
 from vnpy.trader.constant import Direction ,Interval,Exchange
 
 
-class Mike_Boll_Strategy(CtaTemplate):
+class Mike_Dc_Strategy(CtaTemplate):
     """"""
 
     author = "yunya"
 
     exchange : Exchange = ""
-    open_window = 5
-    xminute_window = 15
-    mike_window = 2
-    mike_length = 20
-    dc_length = 80
-    kk_length = 50
+    mike_window = 1
+    mike_length = 30
+    dc_length = 10
+    kk_length = 20
     kk_dev = 2.0
     sl_trade = 2
     fixed_size = 1
-
-
-
 
     ask = 0
     bid = 0
@@ -52,9 +47,6 @@ class Mike_Boll_Strategy(CtaTemplate):
     ema_ws = 0  #初级支撑线
     ema_ms = 0  #中级支撑线
     ema_ss = 0  #高级支撑线
-
-
-
 
     dc_up = 0
     dc_down = 0
@@ -74,16 +66,14 @@ class Mike_Boll_Strategy(CtaTemplate):
 
 
     parameters = [
-                    "exchange"
-                    "open_window",
-                    "xminute_window",
+                    "exchange",
                     "mike_window",
-                    "boll_length",
-                    "boll_dev",
                     "mike_length",
-                    "sl_multiplier",
+                    "dc_length",
+                    "kk_length",
+                    "kk_dev",
                     "sl_trade",
-                    "fixed_size"
+                    "fixed_size",
                     ]
 
     variables = [
@@ -113,7 +103,7 @@ class Mike_Boll_Strategy(CtaTemplate):
                                 on_window_bar=self.on_hour_bar,
                                 interval=Interval.HOUR
                             )
-        self.am_xhour = ArrayManager(self.mike_length + 5)
+        self.am_xhour = ArrayManager(max(self.dc_length ,self.kk_length) + 10)
 
     def on_init(self):
         """
@@ -188,23 +178,22 @@ class Mike_Boll_Strategy(CtaTemplate):
 
             if self.ema_entry_crossover > 0 :
                 self.buy(self.kk_up, self.fixed_size,True)
+                print(self.kk_up)
 
             elif self.ema_entry_crossover < 0 :
                 self.short(self.kk_down, self.fixed_size,True)
 
         elif self.pos > 0:
 
-            self.long_stop = max(self.dc_up,self.long_stop_trade)
+            self.long_stop = max(self.dc_down,self.long_stop_trade)
             self.sell(self.long_stop, abs(self.pos), True)
 
         elif self.pos < 0:
 
-            self.short_stop = min(self.dc_down,self.short_stop_trade)
+            self.short_stop = min(self.dc_up,self.short_stop_trade)
             self.cover(self.short_stop, abs(self.pos), True)
 
         self.sync_data()
-        self.put_event()
-
         self.put_event()
 
     def on_order(self, order: OrderData):
@@ -220,13 +209,13 @@ class Mike_Boll_Strategy(CtaTemplate):
         """
         Callback of new trade data update.
         """
-        if trade.direction == Direction.LONG:
-            self.long_enrty = trade.price
-            self.long_stop_trade = self.long_enrty - 2 * self.atr_value
-
-        else:
-            self.short_enrty = trade.price
-            self.short_stop_trade = self.short_enrty + 2 * self.atr_value
+        # if trade.direction == Direction.LONG:
+        #     self.long_enrty = trade.price
+        #     self.long_stop_trade = self.long_enrty - 2 * self.atr_value
+        #
+        # else:
+        #     self.short_enrty = trade.price
+        #     self.short_stop_trade = self.short_enrty + 2 * self.atr_value
 
         self.put_event()
 
