@@ -1,10 +1,9 @@
 # _*_coding : UTF-8 _*_
 #开发团队 ：yunya
 #开发人员 ：Administrator
-#开发时间 : 2020/6/12 14:34
-#文件名称 ：mike_boll_strategy.py
+#开发时间 : 2020/6/14 8:34
+#文件名称 ：mike_dc_strategy.py
 #开发工具 ： PyCharm
-
 
 from vnpy.app.cta_strategy import (
     CtaTemplate,
@@ -17,7 +16,7 @@ from vnpy.app.cta_strategy import (
     ArrayManager,
 )
 
-from vnpy.trader.constant import Direction ,Interval
+from vnpy.trader.constant import Direction ,Interval,Exchange
 
 
 class Mike_Boll_Strategy(CtaTemplate):
@@ -25,15 +24,19 @@ class Mike_Boll_Strategy(CtaTemplate):
 
     author = "yunya"
 
+    exchange : Exchange = ""
     open_window = 5
     xminute_window = 15
     mike_window = 2
-    boll_length = 80
-    boll_dev = 2.0
     mike_length = 20
-    sl_multiplier = 0.81
+    dc_length = 80
+    kk_length = 50
+    kk_dev = 2.0
     sl_trade = 2
     fixed_size = 1
+
+
+
 
     ask = 0
     bid = 0
@@ -50,15 +53,28 @@ class Mike_Boll_Strategy(CtaTemplate):
     ema_ms = 0  #中级支撑线
     ema_ss = 0  #高级支撑线
 
-    boll_up = 0
-    boll_down = 0
+
+
+
+    dc_up = 0
+    dc_down = 0
+    kk_up = 0
+    kk_down = 0
+
+    atr_value = 0
     long_stop = 0
     short_stop = 0
+    long_stop_trade = 0
+    short_stop_trade = 0
+    long_enrty = 0
+    short_enrty = 0
     ema_entry_crossover = 0
     boll_entry_crossover = 0
     boll_width = 0
 
+
     parameters = [
+                    "exchange"
                     "open_window",
                     "xminute_window",
                     "mike_window",
@@ -91,17 +107,6 @@ class Mike_Boll_Strategy(CtaTemplate):
         """"""
         super().__init__(cta_engine, strategy_nam_xhoure, vt_symbol, setting)
 
-        self.bg_open = BarGenerator(self.on_bar, self.open_window, self.on_open_bar)
-        self.am_open = ArrayManager()
-
-        self.bg_xminute = BarGenerator(
-                                        on_bar=self.on_bar,
-                                        window=self.xminute_window,
-                                        on_window_bar=self.on_xminute_bar,
-                                        interval=Interval.MINUTE
-                                        )
-        self.am_xminute = ArrayManager()
-
         self.bg_xhour = BarGenerator(
                                 on_bar=self.on_bar,
                                 window=self.mike_window,
@@ -115,7 +120,7 @@ class Mike_Boll_Strategy(CtaTemplate):
         Callback when strategy is inited.
         """
         self.write_log("策略初始化")
-        self.load_bar(10)
+        self.exchange_load_bar(self.exchange)
 
     def on_start(self):
         """
@@ -142,73 +147,7 @@ class Mike_Boll_Strategy(CtaTemplate):
         Callback of new bar data update.
         """
         self.bg_xhour.update_bar(bar)
-        self.bg_xminute.update_bar(bar)
-        self.bg_open.update_bar(bar)
 
-    def on_open_bar(self, bar: BarData):
-        """
-         开单窗口
-        """
-        self.cancel_all()
-
-        self.am_open.update_bar(bar)
-        if not self.am_xhour.inited or not self.am_xminute.inited or not self.am_open.inited :
-            return
-
-        if self.pos == 0:
-            self.intra_trade_high = bar.high_price
-            self.intra_trade_low = bar.low_price
-
-            if self.ema_entry_crossover > 0 :
-                self.buy(self.boll_up, self.fixed_size,True)
-
-            elif self.ema_entry_crossover < 0 :
-                self.short(self.boll_down, self.fixed_size,True)
-
-        elif self.pos > 0:
-            if self.ema_entry_crossover < 0:
-                self.sell(bar.close_price - 5, abs(self.pos))
-
-            else:
-                self.intra_trade_high = max(self.intra_trade_high, bar.high_price)
-                self.intra_trade_low = bar.low_price
-
-                # 使用布林宽度止损
-                self.long_stop = self.intra_trade_high - self.boll_width * self.sl_multiplier
-                self.sell(self.long_stop, abs(self.pos), True)
-
-        elif self.pos < 0:
-            if self.ema_entry_crossover > 0:
-                self.cover(bar.close_price + 5, abs(self.pos))
-
-            else:
-                self.intra_trade_high = bar.high_price
-                self.intra_trade_low = min(self.intra_trade_low, bar.low_price)
-
-                self.short_stop = self.intra_trade_low + self.boll_width * self.sl_multiplier
-                self.cover(self.short_stop, abs(self.pos), True)
-
-        self.sync_data()
-        self.put_event()
-
-    def on_xminute_bar(self,bar:BarData):
-        """
-        :param_xhour bar:
-        :return:
-        """
-        # 计算布林线指标
-        self.am_xminute.update_bar(bar)
-
-        if not self.am_xminute.inited and not self.am_xhour.inited:
-            return
-
-        boll_up_array,boll_down_array = self.am_xminute.boll(self.boll_length,self.boll_dev,True)
-
-        self.boll_up = boll_up_array[-1]
-        self.boll_down = boll_down_array[-1]
-        self.boll_width = self.boll_up - self.boll_down
-
-        self.put_event()
     def on_hour_bar(self, bar: BarData):
         """
         计算 mike 指标线
@@ -239,6 +178,33 @@ class Mike_Boll_Strategy(CtaTemplate):
 
         elif (self.am_xhour.close[-1] < self.ema_ss) or (self.ema_mr > self.am_xhour.close[-1] > self.ema_wr):
             self.ema_entry_crossover = -1
+
+        self.kk_up,self.kk_down = self.am_xhour.keltner(self.kk_length,self.kk_dev)
+
+        self.dc_up,self.dc_down = self.am_xhour.donchian(self.dc_length)
+
+        if self.pos == 0:
+            self.atr_value = self.am_xhour.atr(30)
+
+            if self.ema_entry_crossover > 0 :
+                self.buy(self.kk_up, self.fixed_size,True)
+
+            elif self.ema_entry_crossover < 0 :
+                self.short(self.kk_down, self.fixed_size,True)
+
+        elif self.pos > 0:
+
+            self.long_stop = max(self.dc_up,self.long_stop_trade)
+            self.sell(self.long_stop, abs(self.pos), True)
+
+        elif self.pos < 0:
+
+            self.short_stop = min(self.dc_down,self.short_stop_trade)
+            self.cover(self.short_stop, abs(self.pos), True)
+
+        self.sync_data()
+        self.put_event()
+
         self.put_event()
 
     def on_order(self, order: OrderData):
@@ -254,6 +220,14 @@ class Mike_Boll_Strategy(CtaTemplate):
         """
         Callback of new trade data update.
         """
+        if trade.direction == Direction.LONG:
+            self.long_enrty = trade.price
+            self.long_stop_trade = self.long_enrty - 2 * self.atr_value
+
+        else:
+            self.short_enrty = trade.price
+            self.short_stop_trade = self.short_enrty + 2 * self.atr_value
+
         self.put_event()
 
     def on_stop_order(self, stop_order: StopOrder):
@@ -262,4 +236,12 @@ class Mike_Boll_Strategy(CtaTemplate):
         """
         pass
 
+    def exchange_load_bar(self,exchange:Exchange):
+        """
+        如果是火币，ok 交易所，就从数据库获取初始化数据
+        """
+        if exchange == Exchange.OKEX or exchange == Exchange.HUOBI:
+            self.load_bar(days=10,use_database=True)
+        else:
+            self.load_bar(10)
 
