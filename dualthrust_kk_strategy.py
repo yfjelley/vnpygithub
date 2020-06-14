@@ -19,15 +19,15 @@ from vnpy.app.cta_strategy import (
 import talib
 from vnpy.trader.constant import Interval, Direction
 from  vnpy.app.cta_strategy.new_strategy import NewBarGenerator
-class DudlThrust_NewStrategy(CtaTemplate):
+class DudlThrustKkStrategy(CtaTemplate):
     """"""
     author = "yunyu"
 
-    open_window = 5
-    xminute_window = 15
+
+    xminute_window = 1
     rolling_period = 70
-    upper_open = 0.5
-    lower_open = 0.6
+    upper_open = 0.2
+    lower_open = 0.2
     cci_window = 30
     keltner_window = 24
     keltner_dev = 1
@@ -43,7 +43,7 @@ class DudlThrust_NewStrategy(CtaTemplate):
     bid = 0
 
     parameters = [
-                "open_window",
+
                 "xminute_window",
                 "rolling_period",
                 "upper_open",
@@ -66,11 +66,9 @@ class DudlThrust_NewStrategy(CtaTemplate):
         """"""
         super().__init__(cta_engine, strategy_name, vt_symbol, setting)
 
-        self.bg = NewBarGenerator(on_bar=self.on_bar,window=self.xminute_window,on_window_bar=self.on_min_bar)
+        self.bg = NewBarGenerator(on_bar=self.on_bar,window=self.xminute_window,on_window_bar=self.on_min_bar,interval=Interval.MINUTE)
         self.am = ArrayManager()
         
-        self.bg_open = BarGenerator(on_bar=self.on_bar,window=self.open_window,on_window_bar=self.on_open_bar,interval=Interval.MINUTE)
-        self.am_open = ArrayManager()
 
     def on_init(self):
         """
@@ -105,41 +103,15 @@ class DudlThrust_NewStrategy(CtaTemplate):
         """
         Callback of new bar data update.
         """
-        self.bg_open.update_bar(bar)
         self.bg.update_bar(bar)
 
-    def on_open_bar(self,bar:BarData):
-        """
-        开仓
-        """
-        self.am.update_bar(bar)
-
-        self.cancel_all()
-
-        if not self.am_open.inited and not self.am.inited:
-            return
-
-        if self.pos == 0:
-            if self.cci_value > 0:
-                self.buy(self.dualthrust_up,self.fixed_size,True)
-
-            elif self.cci_value < 0:
-                self.short(self.dualthrust_down,self.fixed_size,True)
-
-        elif self.pos > 0:
-            self.sell(self.exit_kk_down,self.fixed_size,True)
-
-        elif self.pos < 0:
-            self.cover(self.exit_kk_up,self.fixed_size,True)
-
-        self.put_event()
 
     def on_min_bar(self, bar: BarData):
         """
         Callback of new bar data update.
         """
         self.am.update_bar(bar)
-
+        self.cancel_all()
         if not self.am.inited:
             return
 
@@ -153,9 +125,24 @@ class DudlThrust_NewStrategy(CtaTemplate):
                                             self.lower_open
                                             )
         self.cci_value = self.am.cci(self.cci_window)
+        print(self.cci_value)
         self.keltner_up, self.keltner_down = self.am.keltner(
             self.keltner_window, self.keltner_dev)
 
+        if self.pos == 0:
+           if self.cci_value > 0:
+                self.buy(self.dualthrust_up,self.fixed_size,True)
+
+           elif self.cci_value < 0:
+                self.short(self.dualthrust_down,self.fixed_size,True)
+
+        elif self.pos > 0:
+            self.sell(self.exit_kk_down,self.fixed_size,True)
+
+        elif self.pos < 0:
+            self.cover(self.exit_kk_up,self.fixed_size,True)
+
+        self.put_event()
         self.sync_data()
         self.put_event()
     def on_order(self, order: OrderData):
@@ -203,10 +190,10 @@ class DudlThrust_NewStrategy(CtaTemplate):
         :return:
         """
         #计算N日最高价的最高价，收盘价的最高价、最低价，最低价的最低价
-        hh = high[-n:-1].max()
-        lc = close[-n:-1].min()
-        hc = close[-n:-1].max()
-        ll = low[-n:-1].min()
+        hh = high[-n:].max()
+        lc = close[-n:].min()
+        hc = close[-n:].max()
+        ll = low[-n:].min()
 
         #计算range,上下轨的距离前一根K线开盘价的距离
         range = max(hh - lc,hc - ll)
