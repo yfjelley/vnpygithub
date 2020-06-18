@@ -45,7 +45,7 @@ class Boll_Control_Dcs_trategy(CtaTemplate):
     parameters = [
                 "open_window",
                 "boll_length",
-                "dc_length ",
+                "dc_length",
                 "sl_multiplier",
                 "prop",
                 "fixed_size",
@@ -62,7 +62,7 @@ class Boll_Control_Dcs_trategy(CtaTemplate):
         super().__init__(cta_engine, strategy_name, vt_symbol, setting)
 
         self.bg = NewBarGenerator(self.on_bar, self.open_window, self.on_xmin_bar)
-        self.am = ArrayManager(self.boll_length + 100)
+        self.am = ArrayManager(int(self.boll_length) + 100)
 
     def on_init(self):
         """

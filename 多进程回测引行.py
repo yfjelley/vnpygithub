@@ -15,7 +15,7 @@ pd.set_option('expand_frame_repr', False)
 #导入策略
 
 
-from vnpy.huicheshuju.class_strategy.AtrStop_UT import AtrStop_Ut
+from vnpy.huicheshuju.strategy.boll_control_dc_strategy import Boll_Control_Dcs_trategy
 
 
 ##############################  修改内容  ####################################
@@ -46,11 +46,11 @@ def run_backtesting(strategy_class, setting, vt_symbol, interval, start, end, ra
 升级内容 = "测试回测系统"
 
 
-strategy_class = AtrStop_Ut              # 策略名称
+strategy_class = Boll_Control_Dcs_trategy            # 策略名称
 exchange ="BINANCE"
 symbol = "btcusdt"
-start = datetime(2020, 4, 3)             # 开始时间
-end = datetime(2020, 5, 3)               # 结束时间
+start = datetime(2017, 4, 3)             # 开始时间
+end = datetime(2019, 8, 1)               # 结束时间
 rate= 10 / 10000                         # 手续费
 slippage = 0.5                           # 滑点
 size = 1                                 # 合约乘数
@@ -101,9 +101,11 @@ if __name__ == '__main__':
 
     # 优化指示名称  如果夏普率
     setting.set_target(f"{class_name}")
-    setting.add_parameter("open_window", 5, 5, 1)
-    setting.add_parameter("nloss_singnal", 2.5, 2.5, 0.1)
-    setting.add_parameter("atrstop_window", 40, 60, 5)
+    setting.add_parameter("open_window", 15, 15, 5)  # 开始值，结束值，步长
+    setting.add_parameter("boll_length", 60, 100, 2)
+    setting.add_parameter("sl_multiplier", 0.6, 0.8, 0.01)
+    setting.add_parameter("dc_length", 70, 100, 5)
+    setting.add_parameter("prop", 1.8, 1.8, 0.2)
 
     # 多进程穷举优化
     result = engine.run_optimization(setting)

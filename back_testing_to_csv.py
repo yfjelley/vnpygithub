@@ -7,9 +7,20 @@
 
 
 import pathlib
+from enum import Enum
+
 import pandas as pd
 pd.set_option('expand_frame_repr', False)
 import os
+
+
+class Backtest(Enum):
+    """
+    Direction of order/trade/position. backtest
+    """
+    DNA = "DNA" # 遗传算法类型
+    EX = "EX" #"穷举多进程算法"
+
 
 
 
