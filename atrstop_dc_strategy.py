@@ -184,8 +184,6 @@ class AtrStop_Dc_Strategy(CtaTemplate):
             self.atr_entry = -1
 
         self.exit_short,self.exit_long = self.am_xmin.donchian(self.dc_length)
-
-
         self.put_event()
 
     def on_trade(self, trade: TradeData):

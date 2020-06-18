@@ -31,25 +31,32 @@ class Boll_kk_vix_simple_Strategy(CtaTemplate):
     author = "yunya"
 
     open_window = 5
-    xminute_window = 4
-    com_length = 200
-    sl_multiplier = 5.0
+    xminute_window = 15
+    com_length = 450
+    exit_dc_length = 10
+    fast_sma_length = 45
+    slow_sma_length = 110
+    cci_length = 30
+    cci_exit = 26
+    sl_multiplier = 8.0
     fixed_size = 1
-    # trading_size = 0
+
 
     bollkk_ema = 0
     bollkk_up = 0
     bollkk_down = 0
     bollkk_width = 0
+    cci_vlue = 0
     long_stop = 0
     short_stop = 0
-    exit_condition = 0
-    entry_condition = 0
     exit_up = 0
     exit_down = 0
     atr_value = 0
     long_entry = 0
     short_entry = 0
+    ma_trend = 0
+    exit_dc_long =0
+    exit_dc_short = 0
     intra_trade_high = 0
     intra_trade_low = 0
 
@@ -59,25 +66,29 @@ class Boll_kk_vix_simple_Strategy(CtaTemplate):
                 "open_window",
                 "xminute_window",
                 "com_length",
+                "fast_sma_length",
+                "slow_sma_length",
+                "cci_length",
+                "cci_exit",
+                "exit_dc_length",
                 "sl_multiplier",
                 "fixed_size",
     ]
+
     variables = [
                 "bollkk_ema",
                 "bollkk_up",
                 "bollkk_down",
                 "bollkk_width",
+                "cci_vlue",
                 "long_stop",
                 "short_stop",
-                "exit_condition",
-                "entry_condition",
                 "exit_up",
                 "exit_down",
                 "atr_value",
                 "long_entry",
                 "short_entry",
-                "intra_trade_high",
-                "intra_trade_low",
+                "ma_trend",
     ]
 
     def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
@@ -88,7 +99,7 @@ class Boll_kk_vix_simple_Strategy(CtaTemplate):
             on_bar=self.on_bar,
             window=self.xminute_window,
             on_window_bar=self.on_xminute_bar,
-            interval=Interval.HOUR
+            interval=Interval.MINUTE
         )
         self.am_xminute = ArrayManager(self.com_length + 10)
         self.bg = BarGenerator(self.on_bar, self.open_window, self.on_open_bar)
@@ -143,27 +154,28 @@ class Boll_kk_vix_simple_Strategy(CtaTemplate):
             # self.trading_size = max(int(self.risk_level / self.xminute_com_width), 1)
             self.intra_trade_high = bar.high_price
             self.intra_trade_low = bar.low_price
-
-            if self.entry_condition > 0:
+            if self.cci_value > self.cci_exit and self.ma_trend > 0:
                 self.buy(self.bollkk_up,self.fixed_size, True)
-
-            elif self.entry_condition < 0:
+                
+            elif self.cci_value < -self.cci_exit and self.ma_trend < 0:
                 self.short(self.bollkk_down, self.fixed_size, True)
 
         elif self.pos > 0:
             self.intra_trade_high = max(self.intra_trade_high, bar.high_price)
             self.intra_trade_low = bar.low_price
 
-            self.exit_up = self.intra_trade_high - self.bollkk_width * self.sl_multiplier
-            # self.exit_up = max(exit_long_stop, self.long_stop)
+            exit_long_stop = self.intra_trade_high - self.bollkk_width * self.sl_multiplier
+            exit_long_dc = max(exit_long_stop,self.exit_dc_long)
+            self.exit_up = max(exit_long_dc, self.long_stop)
             self.sell(self.exit_up, abs(self.pos), True)
 
         elif self.pos < 0:
             self.intra_trade_high = bar.high_price
             self.intra_trade_low = min(self.intra_trade_low, bar.low_price)
 
-            self.exit_down = self.intra_trade_low + self.bollkk_width * self.sl_multiplier
-            # self.exit_down = min(exit_short_stop, self.short_stop)
+            exit_short_stop = self.intra_trade_low + self.bollkk_width * self.sl_multiplier
+            exit_shout_dc = min(exit_short_stop,self.exit_dc_short)
+            self.exit_down = min(exit_shout_dc, self.short_stop)
             self.cover(self.exit_down, abs(self.pos), True)
 
         self.put_event()
@@ -180,7 +192,7 @@ class Boll_kk_vix_simple_Strategy(CtaTemplate):
         if not self.am_xminute.inited:
             return
 
-        bollkk_ema,current_bollkk_up,current_bollkk_down,last_bollkk_up,last_bollkk_down = self.boll_kk_combination(
+        bollkk_ema_value,self.bollkk_up,self.bollkk_down,= self.boll_kk_combination(
                                                                                 high=self.am_xminute.high[:-1],
                                                                                 close=self.am_xminute.close[:-1],
                                                                                 low=self.am_xminute.low[:-1],
@@ -188,25 +200,25 @@ class Boll_kk_vix_simple_Strategy(CtaTemplate):
                                                                             )
 
         # 计算开平信号
-        current_close = self.am_xminute.close[-1]
-        last_close = self.am_xminute.close[-2]
+        self.current_close = self.am_xminute.close[-1]
+        self.last_close = self.am_xminute.close[-2]
+        self.bollkk_ema = bollkk_ema_value[-1]
 
-        self.bollkk_up = current_bollkk_up
-        self.bollkk_down = current_bollkk_down
         self.bollkk_width = abs(self.bollkk_up - self.bollkk_down)
 
-        #开多
-        if (current_close > current_bollkk_up) and (last_close <= last_bollkk_up):
-            self.entry_condition = 1
-            print(f"开多信号：{self.entry_condition}")
-        # 开空
-        elif (current_close < current_bollkk_down) and (last_close >= last_bollkk_down):
-            self.entry_condition = -1
+        self.cci_value = self.am_xminute.cci(self.cci_length)
+
+
+
+        self.fast_ma = self.am_xminute.sma(self.fast_sma_length)
+        self.slow_ma = self.am_xminute.sma(self.slow_sma_length)
+
+        if self.fast_ma > self.slow_ma:
+            self.ma_trend = 1
         else:
-            self.entry_condition = 0
-
+            self.ma_trend = -1
         self.atr_value = self.am_xminute.atr(30)
-
+        self.exit_dc_short,self.exit_dc_long = self.am_xminute.donchian(self.exit_dc_length)
         self.sync_data()
         self.put_event()
 
@@ -257,10 +269,8 @@ class Boll_kk_vix_simple_Strategy(CtaTemplate):
         kk_up = bollkk_ema + kk_atr * kk_dev
         kk_down = bollkk_ema - kk_atr * kk_dev
 
-        current_bollkk_up = max(boll_up[-1],kk_up[-1])
-        current_bollkk_down = min(boll_down[-1],kk_down[-1])
+        bollkk_up = max(boll_up[-1],kk_up[-1])
+        bollkk_down = min(boll_down[-1],kk_down[-1])
 
-        last_bollkk_up = max(boll_up[-2],kk_up[-2])
-        last_bollkk_down = min(boll_down[-2],kk_down[-2])
 
-        return bollkk_ema,current_bollkk_up,current_bollkk_down,last_bollkk_up,last_bollkk_down
+        return bollkk_ema,bollkk_up,bollkk_down,

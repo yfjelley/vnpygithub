@@ -20,6 +20,8 @@ pd.set_option('expand_frame_repr', False)
 from vnpy.huicheshuju.strategy.atrstop_rsi_dc_strategy import AtrStopRsiDcStrategy
 from vnpy.huicheshuju.strategy.boll_kk_vix_simple_strategy import Boll_kk_vix_simple_Strategy
 
+from vnpy.huicheshuju.strategy.boll_control_dc_strategy import Boll_Control_Dcs_trategy
+
 
 
 if __name__ == '__main__':
@@ -56,7 +58,7 @@ if __name__ == '__main__':
     #                                    })
 
     # 传入参数，实例化一个策略，相当于执行了DoubleMaStrategy(strategy_name,vt_symbol, setting)
-    engine.add_strategy(Boll_kk_vix_simple_Strategy,{})
+    engine.add_strategy(Boll_Control_Dcs_trategy,{})
 
     # 加载  最终的结果是通过数据库的ORM取出DbBarData，遍历DbBarData，通过to_tick或to_bar方法生成tick或Bar，
     # 最终得到self.history_data（里面保存tick或bar）
